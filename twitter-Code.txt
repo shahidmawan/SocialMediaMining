@@ -1,0 +1,99 @@
+
+library(twitteR)
+library(wordcloud)
+library(RColorBrewer)
+library(plyr)
+library(ggplot2)
+library(sentiment)
+
+
+
+apiKey <-  "C31OutyXqrdRfgjCpdB5XPgjfghjWbnbvn6fYoqutyuY51"
+apiSecret <- "KWgtyx4egjfghAZzefSzzS8MUKAkhgjfhCvhHsjFc1q3gfjOnFIHe7FD7t8nqhI1c"
+
+ access_token<- "1425561tty90-9dCGBMR3AWz0qRco9S2o2lAffgjgjghPOZZetgfjghjE5tyutyb0yz07bGU"
+ access_secret<- "pYe1y9dvvCAOycfgjghWoEfmAHfE3l7bR14TffgjghfghMMM3VFyAtvyruty1pH"
+setup_twitter_oauth(consumer_key = apiKey,consumer_secret = apiSecret,access_token = access_token,access_secret = access_secret)
+
+tweets<- searchTwitter("#Elclasico", n=1500, lang = "en",resultType="recent")
+tweets.text<- sapply(tweets,function(x)x$getText())
+ 
+ tweets.text = gsub("(RT|via)((?:\\b\\W*@\\w+)+)", "", tweets.text)
+ tweets.text = gsub("@\\w+", "", tweets.text)
+ tweets.text = gsub("[[:punct:]]", "", tweets.text)
+ tweets.text = gsub("[[:digit:]]", "", tweets.text)
+ tweets.text = gsub("http\\w+", "", tweets.text)
+ tweets.text = gsub("[ \t]{2,}", "", tweets.text)
+ tweets.text = gsub("^\\s+|\\s+$", "", tweets.text)
+ tweets.text <- tolower(tweets.text)
+
+library(wordcloud)
+wordcloud(tweets.text)
+
+ library("tm")
+ library("SnowballC")
+
+str(tweets.text)
+ library("RColorBrewer")
+
+tweets_corpus<- Corpus(VectorSource(tweets.text))
+ toSpace<- content_transformer(function(x,pattern)gsub(pattern,"",x))
+ tweets_corpus<- tm_map(tweets_corpus,toSpace,"/")
+ tweets_corpus<- tm_map(tweets_corpus,toSpace, "@")
+tweets_corpus<- tm_map(tweets_corpus, toSpace, "\\|")
+ 
+ tweets_corpus <- tm_map(tweets_corpus, content_transformer(tolower)) 
+ 
+ tweets_corpus <- tm_map(tweets_corpus, removeNumbers) 
+ 
+ tweets_corpus <- tm_map(tweets_corpus, removeWords, stopwords("english")) 
+ 
+ tweets_corpus <- tm_map(tweets_corpus, removeWords, c("blabla1", "blabla2")) 
+ 
+ tweets_corpus <- tm_map(tweets_corpus, removePunctuation) 
+ 
+ tweets_corpus <- tm_map(tweets_corpus, stripWhitespace) 
+ 
+ tweets_corpus <- tm_map(tweets_corpus, stemDocument)
+ 
+ dtm <- TermDocumentMatrix(tweets_corpus) 
+ 
+ m <- as.matrix(dtm) 
+ 
+ v <- sort(rowSums(m),decreasing=TRUE) 
+ 
+ d <- data.frame(word = names(v),freq=v) 
+ 
+ head(d, 10)
+set.seed(1234)
+ wordcloud(words = d$word, freq = d$freq, min.freq = 1, max.words=200, random.order=FALSE, rot.per=0.35, colors=brewer.pal(8, "Dark2"))
+findFreqTerms(dtm, lowfreq = 4)
+findAssocs(dtm, terms = "freedom", corlimit = 0.3)
+barplot(d[1:10,]$freq, las = 2, names.arg = d[1:10,]$word, col ="lightblue", main ="Most frequent words", ylab = "Word frequencies")
+
+ names(tweets.text) = NULL
+ emotion<- classify_emotion(tweets.text, algorithm="bayes", prior=1.0)
+ emotion = emotion[,7]
+ emotion[is.na(emotion)] = "unknown"
+ polarity=classify_polarity(tweets.text, algorithm="bayes")
+ polarity1= polarity[,4]
+ polarity1= polarity[,4]
+ frame<- sentiment_dataframe = data.frame(text=tweets.text, emotion=emotion, polarity=polarity, stringsAsFactors=FALSE)
+ 
+ frame<- data.frame(text=tweets.text, emotion=emotion, polarity=polarity, stringsAsFactors=FALSE)
+ 
+ 
+ frame<-  within(sentiment_dataframe, emotion <- factor(emotion, levels=names(sort(table(emotion), decreasing=TRUE))))
+ 
+ ggplot(frame, aes(x=emotion)) + geom_bar(aes(y=..count.., fill=emotion)) +
+     scale_fill_brewer(palette="Dark2") +
+     ggtitle('Sentiment Analysis of Tweets on Twitter about BJP') +
+     theme(legend.position='right') + ylab('Number of Tweets') + xlab('Emotion Categories')
+ 
+ ggplot(frame, aes(x=polarity)) +
+     geom_bar(aes(y=..count.., fill=polarity)) +
+     scale_fill_brewer(palette="RdGy") +
+     ggtitle('Sentiment Analysis of Tweets on Twitter about BJP') +
+     theme(legend.position='right') + ylab('Number of Tweets') + xlab('Polarity Categories')
+ 
+ 
